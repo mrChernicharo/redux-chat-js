@@ -104,10 +104,10 @@ function MessageDisplay() {
 	const messagePaneRef = useRef(null);
 
 	const chatId = useSelector(state => state.appState.chatId);
-	const messages = useSelector(state => state.messages[chatId]);
+	const messages = useSelector(state => state.messages[chatId]?.messages);
 
 	useEffect(() => {
-		dispatch(fetchMessages({ chatId, offset: 10 }));
+		if (!messages) dispatch(fetchMessages({ chatId })); // initial
 	}, [chatId]);
 
 	if (messages && messagePaneRef.current) {
