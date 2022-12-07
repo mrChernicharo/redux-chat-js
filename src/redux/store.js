@@ -2,7 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/dist/query";
 import appState from "./app-state";
 import { chatsApi } from "./chats";
-// import { messagesApi } from "./messages";
+import messages from "./messages";
 import { usersApi } from "./users";
 
 export const store = configureStore({
@@ -10,6 +10,7 @@ export const store = configureStore({
 		appState,
 		[usersApi.reducerPath]: usersApi.reducer,
 		[chatsApi.reducerPath]: chatsApi.reducer,
+		messages,
 		// [messagesApi.reducerPath]: messagesApi.reducer,
 	},
 	middleware: getDefaultMiddleware =>

@@ -8,9 +8,9 @@ import "./index.css";
 export const PAGE_SIZE = 10;
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-	<React.StrictMode>
-		<Provider store={store}>
-			<App />
-		</Provider>
-	</React.StrictMode>
+	// <React.StrictMode>
+	<Provider store={store}>
+		<App />
+	</Provider>
+	// </React.StrictMode>
 );

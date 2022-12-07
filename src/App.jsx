@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { PAGE_SIZE } from "./main";
 import { setChatId, setUserId } from "./redux/app-state";
 import { useGetChatsQuery } from "./redux/chats";
+import { fetchMessages } from "./redux/messages";
 // import {
 // 	// useGetAllMessagesFromChatQuery,
 // 	useGetPaginatedMessagesFromChatQuery,
@@ -98,28 +99,24 @@ function MessageBubble({ message, idx }) {
 }
 
 function MessageDisplay() {
+	const dispatch = useDispatch();
+
 	const messagePaneRef = useRef(null);
-	const offset = useRef({ value: 0 });
 
 	const chatId = useSelector(state => state.appState.chatId);
-
-	const messages = [];
-	// const { data: messages, refetch } = useGetPaginatedMessagesFromChatQuery({
-	// 	chatId,
-	// 	offset: offset.current.value, // doesn't trigger because it's a reference type
-	// });
-
-	if (messages && messagePaneRef.current) {
-		setTimeout(() => {
-			messagePaneRef.current?.scrollTo({
-				top: 999_999,
-			});
-		}, 10);
-	}
+	const messages = useSelector(state => state.messages[chatId]);
 
 	useEffect(() => {
-		offset.current.value = 0;
+		dispatch(fetchMessages({ chatId, offset: 10 }));
 	}, [chatId]);
+
+	if (messages && messagePaneRef.current) {
+		// setTimeout(() => {
+		// 	messagePaneRef.current?.scrollTo({
+		// 		top: 999_999,
+		// 	});
+		// }, 10);
+	}
 
 	return (
 		<div className="relative border h-[calc(100vh-200px)] ">
@@ -133,8 +130,7 @@ function MessageDisplay() {
 				<button
 					className="w-full mx-auto"
 					onClick={async e => {
-						offset.current.value += PAGE_SIZE;
-						await refetch();
+						// await refetch();
 					}}
 				>
 					Load more
