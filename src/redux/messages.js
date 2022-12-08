@@ -106,7 +106,9 @@ const messagesSlice = createSlice({
 
 				state.isFetching = false;
 			})
-			.addCase(postMessage.pending, (state, action) => {})
+			.addCase(postMessage.pending, (state, action) => {
+				state.status = "posting";
+			})
 			.addCase(postMessage.fulfilled, (state, { payload }) => {
 				console.log("postMessage.fulfilled", { payload });
 				const { user, chatId, message } = payload;
@@ -119,6 +121,7 @@ const messagesSlice = createSlice({
 
 				state[chatId].offset++;
 				state[chatId].messages = [newMessage, ...state[chatId].messages];
+				state.status = "idle";
 			});
 	},
 });

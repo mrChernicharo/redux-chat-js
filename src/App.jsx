@@ -104,10 +104,14 @@ function MessageDisplay() {
 	const messagePaneRef = useRef(null);
 
 	const chatId = useSelector(state => state.appState.chatId);
+
 	const messages = useSelector(state => state.messages[chatId]?.messages);
 	const hasMore = useSelector(state => state.messages[chatId]?.hasMore);
-	const isLoading = useSelector(state => state.messages.status !== "idle");
+	const offset = useSelector(state => state.messages[chatId]?.offset || 0);
+	const isLoading = useSelector(state => state.messages.status === "pending");
 	const isFetching = useSelector(state => state.messages.isFetching);
+
+	console.log({ offset });
 
 	useEffect(() => {
 		if (!messages) dispatch(fetchMessages({ chatId })); // initial
@@ -137,19 +141,25 @@ function MessageDisplay() {
 					<MessageBubble key={msg.id} idx={idx} message={msg} />
 				))}
 
-				{hasMore ? (
+				{hasMore && (
 					<button
 						className="w-full mx-auto"
 						onClick={async e => {
-							if (hasMore) {
-								dispatch(fetchMoreMessages({ chatId }));
-							}
+							dispatch(fetchMoreMessages({ chatId }));
 						}}
 					>
 						{isFetching ? "fetching more messages..." : "Load more"}
 					</button>
-				) : (
-					<div className="text-center">No more messages</div>
+				)}
+
+				{!hasMore && messages?.length > 10 && (
+					<small className="text-center text-stone-500">No more messages</small>
+				)}
+
+				{!hasMore && messages?.length === 0 && (
+					<div className="border h-[calc(100vh-200px)] flex items-center justify-center text-stone-500">
+						This is the beginning of a beautiful conversation
+					</div>
 				)}
 			</div>
 		</div>
@@ -163,22 +173,22 @@ function MessageInput() {
 	const { data: users } = useGetUsersQuery();
 	const chatId = useSelector(state => state.appState.chatId);
 	const userId = useSelector(state => state.appState.userId);
+
+	const isSending = useSelector(state => state.messages.status === "posting");
+
 	const user = useMemo(
 		() => users && users.find(u => u.id === userId),
 		[users, userId]
 	);
 
-	// console.log({  });
-
-	// const dispatchPostMessage = useCallback(() => {
-	// 	dispatch(
-	// 		postMessage({
-	// 			user,
-	// 			chatId,
-	// 			body: textRef.current.value,
-	// 		})
-	// 	);
-	// }, [dispatch, user, chatId]);
+	const dispatchPostMessage = text =>
+		dispatch(
+			postMessage({
+				user,
+				chatId,
+				body: text,
+			})
+		);
 
 	return (
 		<div className="">
@@ -193,13 +203,7 @@ function MessageInput() {
 							e.key === "Enter" &&
 							textRef.current?.value.replace(/\n/g, "")
 						) {
-							dispatch(
-								postMessage({
-									user,
-									chatId,
-									body: textRef.current.value,
-								})
-							);
+							dispatchPostMessage(textRef.current.value);
 							textRef.current.value = "";
 						}
 					}}
@@ -210,21 +214,12 @@ function MessageInput() {
 					className="w-20 mt-2 mb-1.5 mr-2 rounded-full bg-cyan-700 p-1"
 					onClick={() => {
 						if (textRef.current?.value) {
-							console.log({ user });
-
-							dispatch(
-								postMessage({
-									user,
-									chatId,
-									body: textRef.current.value,
-								})
-							);
+							dispatchPostMessage(textRef.current.value);
 							textRef.current.value = "";
 						}
 					}}
 				>
-					{/* {isLoading ? "Sending..." : "Send"} */}
-					Send
+					{isSending ? "Sending..." : "Send"}
 				</button>
 			</div>
 		</div>
