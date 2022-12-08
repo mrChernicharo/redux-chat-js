@@ -9,7 +9,6 @@ const initialState = {
 
 async function getDBMessages({ chatId, offsetStart, offsetEnd }) {
 	// fetch 11 messages, pop 11th to check hasMore, return 10 messages
-
 	const response = await db
 		.from("messages")
 		.select("*, author:users(*), reactions(id, user_id, reaction)")
@@ -47,6 +46,25 @@ export const fetchMoreMessages = createAsyncThunk(
 	}
 );
 
+export const postMessage = createAsyncThunk(
+	"messages/postMessage",
+	async ({ user, chatId, body }, { getState }) => {
+		const response = await db
+			.from("messages")
+			.insert({
+				user_id: user.id,
+				chat_id: chatId,
+				body,
+			})
+			.select("*");
+
+		const message = response?.data[0] || [];
+		console.log({ user, chatId, message });
+
+		return { user, chatId, message };
+	}
+);
+
 const messagesSlice = createSlice({
 	name: "messages",
 	initialState,
@@ -59,7 +77,7 @@ const messagesSlice = createSlice({
 			})
 			.addCase(fetchMessages.fulfilled, (state, { payload }) => {
 				const { data, hasMore, chatId } = payload;
-				console.log(payload);
+				console.log("fetchMessages.fulfilled", payload);
 
 				if (!state[chatId]) {
 					// create new message queue
@@ -87,6 +105,20 @@ const messagesSlice = createSlice({
 				state[chatId].messages = [...state[chatId].messages, ...data];
 
 				state.isFetching = false;
+			})
+			.addCase(postMessage.pending, (state, action) => {})
+			.addCase(postMessage.fulfilled, (state, { payload }) => {
+				console.log("postMessage.fulfilled", { payload });
+				const { user, chatId, message } = payload;
+
+				const newMessage = {
+					...message,
+					author: user,
+					reactions: [],
+				};
+
+				state[chatId].offset++;
+				state[chatId].messages = [newMessage, ...state[chatId].messages];
 			});
 	},
 });

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { PAGE_SIZE } from "./main";
 import { setChatId, setUserId } from "./redux/app-state";
 import { useGetChatsQuery } from "./redux/chats";
-import { fetchMessages, fetchMoreMessages } from "./redux/messages";
+import { fetchMessages, fetchMoreMessages, postMessage } from "./redux/messages";
 // import {
 // 	// useGetAllMessagesFromChatQuery,
 // 	useGetPaginatedMessagesFromChatQuery,
@@ -137,16 +137,20 @@ function MessageDisplay() {
 					<MessageBubble key={msg.id} idx={idx} message={msg} />
 				))}
 
-				<button
-					className="w-full mx-auto"
-					onClick={async e => {
-						if (hasMore) {
-							dispatch(fetchMoreMessages({ chatId }));
-						}
-					}}
-				>
-					{isFetching ? "fetching more messages..." : "Load more"}
-				</button>
+				{hasMore ? (
+					<button
+						className="w-full mx-auto"
+						onClick={async e => {
+							if (hasMore) {
+								dispatch(fetchMoreMessages({ chatId }));
+							}
+						}}
+					>
+						{isFetching ? "fetching more messages..." : "Load more"}
+					</button>
+				) : (
+					<div className="text-center">No more messages</div>
+				)}
 			</div>
 		</div>
 	);
@@ -155,11 +159,26 @@ function MessageDisplay() {
 function MessageInput() {
 	const textRef = useRef(null);
 
+	const dispatch = useDispatch();
+	const { data: users } = useGetUsersQuery();
 	const chatId = useSelector(state => state.appState.chatId);
-
 	const userId = useSelector(state => state.appState.userId);
+	const user = useMemo(
+		() => users && users.find(u => u.id === userId),
+		[users, userId]
+	);
 
-	// const [postMessage, { data, isLoading }] = usePostMessageMutation();
+	// console.log({  });
+
+	// const dispatchPostMessage = useCallback(() => {
+	// 	dispatch(
+	// 		postMessage({
+	// 			user,
+	// 			chatId,
+	// 			body: textRef.current.value,
+	// 		})
+	// 	);
+	// }, [dispatch, user, chatId]);
 
 	return (
 		<div className="">
@@ -174,11 +193,13 @@ function MessageInput() {
 							e.key === "Enter" &&
 							textRef.current?.value.replace(/\n/g, "")
 						) {
-							postMessage({
-								userId,
-								chatId,
-								body: textRef.current.value,
-							});
+							dispatch(
+								postMessage({
+									user,
+									chatId,
+									body: textRef.current.value,
+								})
+							);
 							textRef.current.value = "";
 						}
 					}}
@@ -189,11 +210,15 @@ function MessageInput() {
 					className="w-20 mt-2 mb-1.5 mr-2 rounded-full bg-cyan-700 p-1"
 					onClick={() => {
 						if (textRef.current?.value) {
-							postMessage({
-								userId,
-								chatId,
-								body: textRef.current.value,
-							});
+							console.log({ user });
+
+							dispatch(
+								postMessage({
+									user,
+									chatId,
+									body: textRef.current.value,
+								})
+							);
 							textRef.current.value = "";
 						}
 					}}
