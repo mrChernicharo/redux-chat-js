@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { PAGE_SIZE } from "./main";
 import { setChatId, setUserId } from "./redux/app-state";
 import { useGetChatsQuery } from "./redux/chats";
-import { fetchMessages } from "./redux/messages";
+import { fetchMessages, fetchMoreMessages } from "./redux/messages";
 // import {
 // 	// useGetAllMessagesFromChatQuery,
 // 	useGetPaginatedMessagesFromChatQuery,
@@ -105,18 +105,27 @@ function MessageDisplay() {
 
 	const chatId = useSelector(state => state.appState.chatId);
 	const messages = useSelector(state => state.messages[chatId]?.messages);
+	const hasMore = useSelector(state => state.messages[chatId]?.hasMore);
+	const isLoading = useSelector(state => state.messages.status !== "idle");
+	const isFetching = useSelector(state => state.messages.isFetching);
 
 	useEffect(() => {
 		if (!messages) dispatch(fetchMessages({ chatId })); // initial
+
+		if (messages && messagePaneRef.current) {
+			messagePaneRef.current?.scrollTo({
+				top: 999_999,
+				behavior: "smooth",
+			});
+		}
 	}, [chatId]);
 
-	if (messages && messagePaneRef.current) {
-		// setTimeout(() => {
-		// 	messagePaneRef.current?.scrollTo({
-		// 		top: 999_999,
-		// 	});
-		// }, 10);
-	}
+	if (isLoading)
+		return (
+			<div className="border h-[calc(100vh-200px)] flex items-center justify-center">
+				<div>Loading messages...</div>
+			</div>
+		);
 
 	return (
 		<div className="relative border h-[calc(100vh-200px)] ">
@@ -127,13 +136,16 @@ function MessageDisplay() {
 				{(messages ?? []).map((msg, idx) => (
 					<MessageBubble key={msg.id} idx={idx} message={msg} />
 				))}
+
 				<button
 					className="w-full mx-auto"
 					onClick={async e => {
-						// await refetch();
+						if (hasMore) {
+							dispatch(fetchMoreMessages({ chatId }));
+						}
 					}}
 				>
-					Load more
+					{isFetching ? "fetching more messages..." : "Load more"}
 				</button>
 			</div>
 		</div>

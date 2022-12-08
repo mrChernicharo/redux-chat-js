@@ -4,44 +4,46 @@ import db from "../supabase";
 
 const initialState = {
 	status: "idle",
+	isFetching: false,
 };
+
+async function getDBMessages({ chatId, offsetStart, offsetEnd }) {
+	// fetch 11 messages, pop 11th to check hasMore, return 10 messages
+
+	const response = await db
+		.from("messages")
+		.select("*, author:users(*), reactions(id, user_id, reaction)")
+		.eq("chat_id", chatId)
+		.order("timestamp", { ascending: false })
+		.range(offsetStart, offsetEnd);
+
+	const data = response.data ?? [];
+	const hasMore = data.pop() && data.length === 10;
+
+	return { data, hasMore, chatId };
+}
 
 export const fetchMessages = createAsyncThunk(
 	"messages/fetchMessages",
 	async ({ chatId }, { getState }) => {
-		// fetch 11 messages, pop 11th to check hasMore, return 10 messages
-		const response = await db
-			.from("messages")
-			.select("*, author:users(*), reactions(id, user_id, reaction)")
-			.eq("chat_id", chatId)
-			.order("timestamp", { ascending: false })
-			.range(0, 10);
-
-		const data = response.data ?? [];
-		const hasMore = !!data.pop();
-
-		// const messagesSlice = getState().messages;
-		// console.log({ offset, chatId, hasMore, messagesSlice }, messages);
-
-		return { data, hasMore, chatId };
+		return await getDBMessages({
+			chatId,
+			offsetStart: 0,
+			offsetEnd: 10,
+		});
 	}
 );
 
 export const fetchMoreMessages = createAsyncThunk(
 	"messages/fetchMoreMessages",
 	async ({ chatId }, { getState }) => {
-		// const offset = getState().messages[chatId]?.offset ?? 10;
-		// const response = await db
-		// 	.from("messages")
-		// 	.select("*, author:users(*), reactions(id, user_id, reaction)")
-		// 	.eq("chat_id", chatId)
-		// 	.order("timestamp", { ascending: false })
-		// 	.range(offset - 10, offset);
-		// const messages = response.data ?? [];
-		// const hasMore = !!messages.pop();
-		// const messagesSlice = getState().messages;
-		// console.log({ offset, chatId, hasMore, messagesSlice }, messages);
-		// return { data: messages, hasMore, chatId, offset };
+		const offset = getState().messages[chatId].offset;
+
+		return await getDBMessages({
+			chatId,
+			offsetStart: offset,
+			offsetEnd: offset + 10,
+		});
 	}
 );
 
@@ -53,15 +55,14 @@ const messagesSlice = createSlice({
 		builder
 			.addCase(fetchMessages.pending, (state, action) => {
 				state.status = "loading";
+				state.isFetching = true;
 			})
 			.addCase(fetchMessages.fulfilled, (state, { payload }) => {
 				const { data, hasMore, chatId } = payload;
-
 				console.log(payload);
-				// create queue
 
 				if (!state[chatId]) {
-					console.log("a new message queue");
+					// create new message queue
 					state[chatId] = {
 						id: chatId,
 						messages: data,
@@ -69,16 +70,23 @@ const messagesSlice = createSlice({
 						offset: 10,
 					};
 				}
-				// else {
-				// 	console.log("an existing queue");
-				// 	state[chatId] = {
-				// 		messages: [...state[chatId].messages, ...data],
-				// 		hasMore,
-				// 		offset: offset + 10,
-				// 	};
-				// }
 
 				state.status = "idle";
+				state.isFetching = false;
+			})
+			.addCase(fetchMoreMessages.pending, (state, action) => {
+				state.isFetching = true;
+			})
+			.addCase(fetchMoreMessages.fulfilled, (state, action) => {
+				const {
+					payload: { data, hasMore, chatId },
+				} = action;
+
+				state[chatId].offset = state[chatId].offset + 10;
+				state[chatId].hasMore = state[chatId].hasMore = hasMore;
+				state[chatId].messages = [...state[chatId].messages, ...data];
+
+				state.isFetching = false;
 			});
 	},
 });
